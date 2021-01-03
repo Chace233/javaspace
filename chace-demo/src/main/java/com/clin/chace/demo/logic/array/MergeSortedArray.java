@@ -1,5 +1,9 @@
 package com.clin.chace.demo.logic.array;
 
+/**
+ * 解题思路：
+ * 归并排序
+ */
 public class MergeSortedArray {
 
     public static void merge(int[] nums1, int m, int[] nums2, int n) {

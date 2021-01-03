@@ -1,0 +1,441 @@
+#保存流程中定义的图片 xml Serializable(序列化)的变量,即保存所有的二进制数据
+CREATE TABLE `ACT_GE_BYTEARRAY` (
+    `ID_` varchar(64) COLLATE utf8_bin NOT NULL COMMENT '资源文件编号',
+    `REV_` int(11) DEFAULT NULL COMMENT '版本号',
+    `NAME_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '部署的文件的名称',
+    `DEPLOYMENT_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '来源于父表 ACT_RE_DEPLOYMENT的主键',
+    `BYTES_` longblob COMMENT '存储文本字节流',
+    `GENERATED_` tinyint(4) DEFAULT NULL COMMENT '是否是引擎生成: 1-activiti生成 | 0-用户生成的',
+    PRIMARY KEY (`ID_`),
+    KEY `ACT_FK_BYTEARR_DEPL` (`DEPLOYMENT_ID_`),
+    CONSTRAINT `ACT_FK_BYTEARR_DEPL` FOREIGN KEY (`DEPLOYMENT_ID_`) REFERENCES `act_re_deployment` (`ID_`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT '通用的流程定义和流程资源';
+
+#属性数据表，存储整个流程引擎级别的数据
+CREATE TABLE `ACT_GE_PROPERTY` (
+    `NAME_` varchar(64) COLLATE utf8_bin NOT NULL COMMENT '属性名称',
+    `VALUE_` varchar(300) COLLATE utf8_bin DEFAULT NULL COMMENT '属性值',
+    `REV_` int(11) DEFAULT NULL COMMENT '版本号',
+    PRIMARY KEY (`NAME_`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT '系统相关属性';
+
+#历史活动信息，记录流程转过的所有节点，与HI_TASKINST不同的是，taskinst只记录usertask内容
+CREATE TABLE `ACT_HI_ACTINST` (
+    `ID_` varchar(64) COLLATE utf8_bin NOT NULL,
+    `PROC_DEF_ID_` varchar(64) COLLATE utf8_bin NOT NULL COMMENT '流程定义ID',
+    `PROC_INST_ID_` varchar(64) COLLATE utf8_bin NOT NULL COMMENT '流程实例ID',
+    `EXECUTION_ID_` varchar(64) COLLATE utf8_bin NOT NULL COMMENT '流程执行ID',
+    `ACT_ID_` varchar(255) COLLATE utf8_bin NOT NULL COMMENT '活动ID-节点定义ID',
+    `TASK_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '任务ID',
+    `CALL_PROC_INST_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '调用外部流程的流程实例ID',
+    `ACT_NAME_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '节点定义的名称',
+    `ACT_TYPE_` varchar(255) COLLATE utf8_bin NOT NULL COMMENT '节点类型 如userEvent userTask',
+    `ASSIGNEE_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '代理人员-节点签收人',
+    `START_TIME_` datetime(3) NOT NULL COMMENT '开始时间',
+    `END_TIME_` datetime(3) DEFAULT NULL COMMENT '结束时间',
+    `DURATION_` bigint(20) DEFAULT NULL COMMENT '耗时',
+    `DELETE_REASON_` varchar(4000) COLLATE utf8_bin DEFAULT NULL COMMENT '删除原因',
+    `TENANT_ID_` varchar(255) COLLATE utf8_bin DEFAULT '',
+    PRIMARY KEY (`ID_`),
+    KEY `ACT_IDX_HI_ACT_INST_START` (`START_TIME_`),
+    KEY `ACT_IDX_HI_ACT_INST_END` (`END_TIME_`),
+    KEY `ACT_IDX_HI_ACT_INST_PROCINST` (`PROC_INST_ID_`,`ACT_ID_`),
+    KEY `ACT_IDX_HI_ACT_INST_EXEC` (`EXECUTION_ID_`,`ACT_ID_`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT '历史节点表';
+
+CREATE TABLE `ACT_HI_ATTACHMENT` (
+    `ID_` varchar(64) COLLATE utf8_bin NOT NULL,
+    `REV_` int(11) DEFAULT NULL,
+    `USER_ID_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '用户ID',
+    `NAME_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '附件名称',
+    `DESCRIPTION_` varchar(4000) COLLATE utf8_bin DEFAULT NULL COMMENT '描述',
+    `TYPE_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '附件类型',
+    `TASK_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '任务ID',
+    `PROC_INST_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '流程实例ID',
+    `URL_` varchar(4000) COLLATE utf8_bin DEFAULT NULL COMMENT '附件地址',
+    `CONTENT_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '内容ID-ACT_GE_BYTEARRAY表的ID',
+    `TIME_` datetime(3) DEFAULT NULL,
+    PRIMARY KEY (`ID_`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT '附件信息';
+
+CREATE TABLE `ACT_HI_COMMENT` (
+    `ID_` varchar(64) COLLATE utf8_bin NOT NULL,
+    `TYPE_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '意见类型: event-事件 comment-处理意见',
+    `TIME_` datetime(3) NOT NULL COMMENT '填写时间',
+    `USER_ID_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '用户ID',
+    `TASK_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '任务ID',
+    `PROC_INST_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '流程实例ID',
+    `ACTION_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '行为类型: addUserLink、deleteUserLink、addGroupLink、deleteGroupLink、addComment、addAttachment、deleteAttachment',
+    `MESSAGE_` varchar(4000) COLLATE utf8_bin DEFAULT NULL COMMENT '处理意见',
+    `FULL_MSG_` longblob COMMENT '全部处理意见',
+    PRIMARY KEY (`ID_`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT '历史审批意见表';
+
+#流程中产生的变量详情，包括控制流程流转的变量，业务表单中填写的流程需要用到的变量等
+CREATE TABLE `ACT_HI_DETAIL` (
+    `ID_` varchar(64) COLLATE utf8_bin NOT NULL,
+    `TYPE_` varchar(255) COLLATE utf8_bin NOT NULL COMMENT '数据类型: FromProperty-表单 VariableUpdate-参数',
+    `PROC_INST_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '流程实例ID',
+    `EXECUTION_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '执行实例ID',
+    `TASK_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '任务ID',
+    `ACT_INST_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '活动实例ID-ACT_HI_ACTINST表中的ID',
+    `NAME_` varchar(255) COLLATE utf8_bin NOT NULL COMMENT '名称',
+    `VAR_TYPE_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '变量类型 ',
+    `REV_` int(11) DEFAULT NULL,
+    `TIME_` datetime(3) NOT NULL COMMENT '创建时间',
+    `BYTEARRAY_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '字节数据ID-ACT_GE_BYTEARRAY表中的ID',
+    `DOUBLE_` double DEFAULT NULL COMMENT '存储变量类型为DOUBLE',
+    `LONG_` bigint(20) DEFAULT NULL COMMENT '存储变量类型为Long',
+    `TEXT_` varchar(4000) COLLATE utf8_bin DEFAULT NULL COMMENT '存储变量类型为String',
+    `TEXT2_` varchar(4000) COLLATE utf8_bin DEFAULT NULL COMMENT '存储JPA持久化对象时才有此值，此值为对象ID',
+    PRIMARY KEY (`ID_`),
+    KEY `ACT_IDX_HI_DETAIL_PROC_INST` (`PROC_INST_ID_`),
+    KEY `ACT_IDX_HI_DETAIL_ACT_INST` (`ACT_INST_ID_`),
+    KEY `ACT_IDX_HI_DETAIL_TIME` (`TIME_`),
+    KEY `ACT_IDX_HI_DETAIL_NAME` (`NAME_`),
+    KEY `ACT_IDX_HI_DETAIL_TASK_ID` (`TASK_ID_`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT '历史详细信息';
+#注：VAR_TYPE_类型说明: jpa-entity、boolean、bytes、serializable(可序列化)、自定义type(根据你自身配置)、
+# CustomVariableType、date、double、integer、long、null、short、string
+
+#主要存储历史节点参与者信息
+CREATE TABLE `ACT_HI_IDENTITYLINK` (
+    `ID_` varchar(64) COLLATE utf8_bin NOT NULL,
+    `GROUP_ID_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '用户组ID',
+    `TYPE_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '用户组类型: assignee candidate owner start participant',
+    `USER_ID_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '用户ID',
+    `TASK_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '任务ID',
+    `PROC_INST_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '流程实例ID',
+    PRIMARY KEY (`ID_`),
+    KEY `ACT_IDX_HI_IDENT_LNK_USER` (`USER_ID_`),
+    KEY `ACT_IDX_HI_IDENT_LNK_TASK` (`TASK_ID_`),
+    KEY `ACT_IDX_HI_IDENT_LNK_PROCINST` (`PROC_INST_ID_`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT '历史流程人员表';
+
+CREATE TABLE `ACT_HI_PROCINST` (
+    `ID_` varchar(64) COLLATE utf8_bin NOT NULL,
+    `PROC_INST_ID_` varchar(64) COLLATE utf8_bin NOT NULL COMMENT '流程实例ID',
+    `BUSINESS_KEY_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '业务KEY',
+    `PROC_DEF_ID_` varchar(64) COLLATE utf8_bin NOT NULL COMMENT '流程定义ID',
+    `START_TIME_` datetime(3) NOT NULL COMMENT '开始时间',
+    `END_TIME_` datetime(3) DEFAULT NULL COMMENT '结束时间',
+    `DURATION_` bigint(20) DEFAULT NULL COMMENT '耗时',
+    `START_USER_ID_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '发起者用户ID',
+    `START_ACT_ID_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '开始节点ID',
+    `END_ACT_ID_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '结束节点ID',
+    `SUPER_PROCESS_INSTANCE_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '上级流程实例ID',
+    `DELETE_REASON_` varchar(4000) COLLATE utf8_bin DEFAULT NULL COMMENT '删除理由',
+    `TENANT_ID_` varchar(255) COLLATE utf8_bin DEFAULT '',
+    `NAME_` varchar(255) COLLATE utf8_bin DEFAULT NULL,
+    PRIMARY KEY (`ID_`),
+    UNIQUE KEY `PROC_INST_ID_` (`PROC_INST_ID_`),
+    KEY `ACT_IDX_HI_PRO_INST_END` (`END_TIME_`),
+    KEY `ACT_IDX_HI_PRO_I_BUSKEY` (`BUSINESS_KEY_`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT '历史流程实例信息表(核心表)';
+
+CREATE TABLE `ACT_HI_TASKINST` (
+    `ID_` varchar(64) COLLATE utf8_bin NOT NULL,
+    `PROC_DEF_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '流程定义ID',
+    `TASK_DEF_KEY_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '任务定义KEY',
+    `PROC_INST_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '流程实例ID',
+    `EXECUTION_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '执行ID',
+    `NAME_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '任务名称',
+    `PARENT_TASK_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '父级任务ID',
+    `DESCRIPTION_` varchar(4000) COLLATE utf8_bin DEFAULT NULL COMMENT '描述',
+    `OWNER_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '实际处理人-默认为空，只有在委托是才有值',
+    `ASSIGNEE_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '代理人',
+    `START_TIME_` datetime(3) NOT NULL COMMENT '开始时间',
+    `CLAIM_TIME_` datetime(3) DEFAULT NULL COMMENT '提醒时间',
+    `END_TIME_` datetime(3) DEFAULT NULL COMMENT '结束时间',
+    `DURATION_` bigint(20) DEFAULT NULL COMMENT '耗时',
+    `DELETE_REASON_` varchar(4000) COLLATE utf8_bin DEFAULT NULL COMMENT '删除原因',
+    `PRIORITY_` int(11) DEFAULT NULL COMMENT '优先级',
+    `DUE_DATE_` datetime(3) DEFAULT NULL COMMENT '应完成时间',
+    `FORM_KEY_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '表单KEY',
+    `CATEGORY_` varchar(255) COLLATE utf8_bin DEFAULT NULL,
+    `TENANT_ID_` varchar(255) COLLATE utf8_bin DEFAULT '',
+    PRIMARY KEY (`ID_`),
+    KEY `ACT_IDX_HI_TASK_INST_PROCINST` (`PROC_INST_ID_`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT '历史任务流程实例信息表(核心表)';
+
+CREATE TABLE `ACT_HI_VARINST` (
+    `ID_` varchar(64) COLLATE utf8_bin NOT NULL,
+    `PROC_INST_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '流程实例ID',
+    `EXECUTION_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '执行ID',
+    `TASK_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '任务ID',
+    `NAME_` varchar(255) COLLATE utf8_bin NOT NULL COMMENT '名称',
+    `VAR_TYPE_` varchar(100) COLLATE utf8_bin DEFAULT NULL COMMENT '参数类型',
+    `REV_` int(11) DEFAULT NULL,
+    `BYTEARRAY_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '字节数据ID-ACT_GE_BYTEARRAY表ID',
+    `DOUBLE_` double DEFAULT NULL COMMENT '存储double值',
+    `LONG_` bigint(20) DEFAULT NULL COMMENT '存储long值',
+    `TEXT_` varchar(4000) COLLATE utf8_bin DEFAULT NULL COMMENT '存储String值',
+    `TEXT2_` varchar(4000) COLLATE utf8_bin DEFAULT NULL COMMENT '存储JPA持久化对象时才有值，该值为对象ID',
+    `CREATE_TIME_` datetime(3) DEFAULT NULL,
+    `LAST_UPDATED_TIME_` datetime(3) DEFAULT NULL,
+    PRIMARY KEY (`ID_`),
+    KEY `ACT_IDX_HI_PROCVAR_PROC_INST` (`PROC_INST_ID_`),
+    KEY `ACT_IDX_HI_PROCVAR_NAME_TYPE` (`NAME_`,`VAR_TYPE_`),
+    KEY `ACT_IDX_HI_PROCVAR_TASK_ID` (`TASK_ID_`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT '历史变量信息表';
+
+CREATE TABLE `ACT_ID_GROUP` (
+    `ID_` varchar(64) COLLATE utf8_bin NOT NULL,
+    `REV_` int(11) DEFAULT NULL,
+    `NAME_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '用户组名称',
+    `TYPE_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '用户组类型',
+    PRIMARY KEY (`ID_`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT '用户组';
+
+CREATE TABLE `ACT_ID_INFO` (
+    `ID_` varchar(64) COLLATE utf8_bin NOT NULL,
+    `REV_` int(11) DEFAULT NULL,
+    `USER_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '用户ID',
+    `TYPE_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '类型',
+    `KEY_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT 'formNPut名称',
+    `VALUE_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '值',
+    `PASSWORD_` longblob COMMENT '密码',
+    `PARENT_ID_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '上级ID',
+    PRIMARY KEY (`ID_`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT '用户扩展信息表';
+
+CREATE TABLE `ACT_ID_MEMBERSHIP` (
+    `USER_ID_` varchar(64) COLLATE utf8_bin NOT NULL,
+    `GROUP_ID_` varchar(64) COLLATE utf8_bin NOT NULL,
+    PRIMARY KEY (`USER_ID_`,`GROUP_ID_`),
+    KEY `ACT_FK_MEMB_GROUP` (`GROUP_ID_`),
+    CONSTRAINT `ACT_FK_MEMB_GROUP` FOREIGN KEY (`GROUP_ID_`) REFERENCES `act_id_group` (`ID_`),
+    CONSTRAINT `ACT_FK_MEMB_USER` FOREIGN KEY (`USER_ID_`) REFERENCES `act_id_user` (`ID_`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT '用户用户组表';
+
+CREATE TABLE `ACT_ID_USER` (
+    `ID_` varchar(64) COLLATE utf8_bin NOT NULL,
+    `REV_` int(11) DEFAULT NULL,
+    `FIRST_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '用户名',
+    `LAST_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '用户姓',
+    `EMAIL_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '邮箱',
+    `PWD_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '密码',
+    `PICTURE_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '头像ID',
+    PRIMARY KEY (`ID_`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT '用户信息表';
+
+#用来存储部署时需要持久化来的信息
+CREATE TABLE `ACT_RE_DEPLOYMENT` (
+    `ID_` varchar(64) COLLATE utf8_bin NOT NULL,
+    `NAME_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '名称',
+    `CATEGORY_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '类型',
+    `KEY_` varchar(255) COLLATE utf8_bin DEFAULT NULL,
+    `TENANT_ID_` varchar(255) COLLATE utf8_bin DEFAULT '',
+    `DEPLOY_TIME_` timestamp(3) NULL DEFAULT NULL COMMENT '部署实践',
+    `ENGINE_VERSION_` varchar(255) COLLATE utf8_bin DEFAULT NULL,
+    PRIMARY KEY (`ID_`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT '部署信息表';
+
+CREATE TABLE `ACT_RE_MODEL` (
+    `ID_` varchar(64) COLLATE utf8_bin NOT NULL,
+    `REV_` int(11) DEFAULT NULL,
+    `NAME_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '模型名称',
+    `KEY_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '模型关键字 搜索引擎用',
+    `CATEGORY_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '类型',
+    `CREATE_TIME_` timestamp(3) NULL DEFAULT NULL COMMENT '创建时间',
+    `LAST_UPDATE_TIME_` timestamp(3) NULL DEFAULT NULL COMMENT '最后修改时间',
+    `VERSION_` int(11) DEFAULT NULL,
+    `META_INFO_` varchar(4000) COLLATE utf8_bin DEFAULT NULL COMMENT '数据源信息',
+    `DEPLOYMENT_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '部署ID',
+    `EDITOR_SOURCE_VALUE_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '编辑源ID',
+    `EDITOR_SOURCE_EXTRA_VALUE_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '编辑源额外ID',
+    `TENANT_ID_` varchar(255) COLLATE utf8_bin DEFAULT '',
+    PRIMARY KEY (`ID_`),
+    KEY `ACT_FK_MODEL_SOURCE` (`EDITOR_SOURCE_VALUE_ID_`),
+    KEY `ACT_FK_MODEL_SOURCE_EXTRA` (`EDITOR_SOURCE_EXTRA_VALUE_ID_`),
+    KEY `ACT_FK_MODEL_DEPLOYMENT` (`DEPLOYMENT_ID_`),
+    CONSTRAINT `ACT_FK_MODEL_DEPLOYMENT` FOREIGN KEY (`DEPLOYMENT_ID_`) REFERENCES `act_re_deployment` (`ID_`),
+    CONSTRAINT `ACT_FK_MODEL_SOURCE` FOREIGN KEY (`EDITOR_SOURCE_VALUE_ID_`) REFERENCES `act_ge_bytearray` (`ID_`),
+    CONSTRAINT `ACT_FK_MODEL_SOURCE_EXTRA` FOREIGN KEY (`EDITOR_SOURCE_EXTRA_VALUE_ID_`) REFERENCES `act_ge_bytearray` (`ID_`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT '流程设计模型表';
+
+CREATE TABLE `ACT_RE_PROCDEF` (
+    `ID_` varchar(64) COLLATE utf8_bin NOT NULL,
+    `REV_` int(11) DEFAULT NULL,
+    `CATEGORY_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '类型',
+    `NAME_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '名称-就是ACT_GE_BYTEARRAY.NAME_值',
+    `KEY_` varchar(255) COLLATE utf8_bin NOT NULL COMMENT '关键字',
+    `VERSION_` int(11) NOT NULL,
+    `DEPLOYMENT_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '部署ID',
+    `RESOURCE_NAME_` varchar(4000) COLLATE utf8_bin DEFAULT NULL COMMENT '资源名称',
+    `DGRM_RESOURCE_NAME_` varchar(4000) COLLATE utf8_bin DEFAULT NULL COMMENT '图片资源名称',
+    `DESCRIPTION_` varchar(4000) COLLATE utf8_bin DEFAULT NULL COMMENT '描述',
+    `HAS_START_FORM_KEY_` tinyint(4) DEFAULT NULL COMMENT '是否从KEY启动',
+    `HAS_GRAPHICAL_NOTATION_` tinyint(4) DEFAULT NULL ,
+    `SUSPENSION_STATE_` int(11) DEFAULT NULL COMMENT '是否挂起',
+    `TENANT_ID_` varchar(255) COLLATE utf8_bin DEFAULT '',
+    `ENGINE_VERSION_` varchar(255) COLLATE utf8_bin DEFAULT NULL,
+    PRIMARY KEY (`ID_`),
+    UNIQUE KEY `ACT_UNIQ_PROCDEF` (`KEY_`,`VERSION_`,`TENANT_ID_`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT '流程定义表';
+
+CREATE TABLE `ACT_RU_EVENT_SUBSCR` (
+    `ID_` varchar(64) COLLATE utf8_bin NOT NULL,
+    `REV_` int(11) DEFAULT NULL,
+    `EVENT_TYPE_` varchar(255) COLLATE utf8_bin NOT NULL COMMENT '事件类型',
+    `EVENT_NAME_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '事件名称',
+    `EXECUTION_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '流程执行ID',
+    `PROC_INST_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '流程实例ID',
+    `ACTIVITY_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '活动ID',
+    `CONFIGURATION_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '配置信息',
+    `CREATED_` timestamp(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) COMMENT '创建时间',
+    `PROC_DEF_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '流程定义ID',
+    `TENANT_ID_` varchar(255) COLLATE utf8_bin DEFAULT '',
+    PRIMARY KEY (`ID_`),
+    KEY `ACT_IDX_EVENT_SUBSCR_CONFIG_` (`CONFIGURATION_`),
+    KEY `ACT_FK_EVENT_EXEC` (`EXECUTION_ID_`),
+    CONSTRAINT `ACT_FK_EVENT_EXEC` FOREIGN KEY (`EXECUTION_ID_`) REFERENCES `act_ru_execution` (`ID_`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT '运行时事件';
+
+CREATE TABLE `ACT_RU_EXECUTION` (
+    `ID_` varchar(64) COLLATE utf8_bin NOT NULL,
+    `REV_` int(11) DEFAULT NULL,
+    `PROC_INST_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '流程实例ID',
+    `BUSINESS_KEY_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '业务KEY',
+    `PARENT_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '父级ID',
+    `PROC_DEF_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '流程定义ID',
+    `SUPER_EXEC_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '',
+    `ROOT_PROC_INST_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '根流程实例ID',
+    `ACT_ID_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '活动ID',
+    `IS_ACTIVE_` tinyint(4) DEFAULT NULL COMMENT '是否激活',
+    `IS_CONCURRENT_` tinyint(4) DEFAULT NULL COMMENT '是否并发',
+    `IS_SCOPE_` tinyint(4) DEFAULT NULL ,
+    `IS_EVENT_SCOPE_` tinyint(4) DEFAULT NULL,
+    `IS_MI_ROOT_` tinyint(4) DEFAULT NULL,
+    `SUSPENSION_STATE_` int(11) DEFAULT NULL COMMENT '暂停状态',
+    `CACHED_ENT_STATE_` int(11) DEFAULT NULL COMMENT '缓存结束状态',
+    `TENANT_ID_` varchar(255) COLLATE utf8_bin DEFAULT '',
+    `NAME_` varchar(255) COLLATE utf8_bin DEFAULT NULL,
+    `START_TIME_` datetime(3) DEFAULT NULL,
+    `START_USER_ID_` varchar(255) COLLATE utf8_bin DEFAULT NULL,
+    `LOCK_TIME_` timestamp(3) NULL DEFAULT NULL,
+    `IS_COUNT_ENABLED_` tinyint(4) DEFAULT NULL,
+    `EVT_SUBSCR_COUNT_` int(11) DEFAULT NULL,
+    `TASK_COUNT_` int(11) DEFAULT NULL,
+    `JOB_COUNT_` int(11) DEFAULT NULL,
+    `TIMER_JOB_COUNT_` int(11) DEFAULT NULL,
+    `SUSP_JOB_COUNT_` int(11) DEFAULT NULL,
+    `DEADLETTER_JOB_COUNT_` int(11) DEFAULT NULL,
+    `VAR_COUNT_` int(11) DEFAULT NULL,
+    `ID_LINK_COUNT_` int(11) DEFAULT NULL,
+    PRIMARY KEY (`ID_`),
+    KEY `ACT_IDX_EXEC_BUSKEY` (`BUSINESS_KEY_`),
+    KEY `ACT_IDC_EXEC_ROOT` (`ROOT_PROC_INST_ID_`),
+    KEY `ACT_FK_EXE_PROCINST` (`PROC_INST_ID_`),
+    KEY `ACT_FK_EXE_PARENT` (`PARENT_ID_`),
+    KEY `ACT_FK_EXE_SUPER` (`SUPER_EXEC_`),
+    KEY `ACT_FK_EXE_PROCDEF` (`PROC_DEF_ID_`),
+    CONSTRAINT `ACT_FK_EXE_PARENT` FOREIGN KEY (`PARENT_ID_`) REFERENCES `act_ru_execution` (`ID_`) ON DELETE CASCADE,
+    CONSTRAINT `ACT_FK_EXE_PROCDEF` FOREIGN KEY (`PROC_DEF_ID_`) REFERENCES `act_re_procdef` (`ID_`),
+    CONSTRAINT `ACT_FK_EXE_PROCINST` FOREIGN KEY (`PROC_INST_ID_`) REFERENCES `act_ru_execution` (`ID_`) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `ACT_FK_EXE_SUPER` FOREIGN KEY (`SUPER_EXEC_`) REFERENCES `act_ru_execution` (`ID_`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT '运行时流程执行实例'
+
+CREATE TABLE `ACT_RU_IDENTITYLINK` (
+    `ID_` varchar(64) COLLATE utf8_bin NOT NULL,
+    `REV_` int(11) DEFAULT NULL,
+    `GROUP_ID_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '组ID',
+    `TYPE_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '用户组类别',
+    `USER_ID_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '用户ID',
+    `TASK_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '任务ID',
+    `PROC_INST_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '流程实例ID',
+    `PROC_DEF_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '流程定义ID',
+    PRIMARY KEY (`ID_`),
+    KEY `ACT_IDX_IDENT_LNK_USER` (`USER_ID_`),
+    KEY `ACT_IDX_IDENT_LNK_GROUP` (`GROUP_ID_`),
+    KEY `ACT_IDX_ATHRZ_PROCEDEF` (`PROC_DEF_ID_`),
+    KEY `ACT_FK_TSKASS_TASK` (`TASK_ID_`),
+    KEY `ACT_FK_IDL_PROCINST` (`PROC_INST_ID_`),
+    CONSTRAINT `ACT_FK_ATHRZ_PROCEDEF` FOREIGN KEY (`PROC_DEF_ID_`) REFERENCES `act_re_procdef` (`ID_`),
+    CONSTRAINT `ACT_FK_IDL_PROCINST` FOREIGN KEY (`PROC_INST_ID_`) REFERENCES `act_ru_execution` (`ID_`),
+    CONSTRAINT `ACT_FK_TSKASS_TASK` FOREIGN KEY (`TASK_ID_`) REFERENCES `act_ru_task` (`ID_`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT '任务参与者数据表 存储当前节点参与者信息';
+
+CREATE TABLE `ACT_RU_JOB` (
+    `ID_` varchar(64) COLLATE utf8_bin NOT NULL,
+    `REV_` int(11) DEFAULT NULL,
+    `TYPE_` varchar(255) COLLATE utf8_bin NOT NULL COMMENT '类型',
+    `LOCK_EXP_TIME_` timestamp(3) NULL DEFAULT NULL COMMENT '锁超时时间',
+    `LOCK_OWNER_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '锁拥有者',
+    `EXCLUSIVE_` tinyint(1) DEFAULT NULL COMMENT '',
+    `EXECUTION_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '执行实例ID',
+    `PROCESS_INSTANCE_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '流程实例ID',
+    `PROC_DEF_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '流程定义ID',
+    `RETRIES_` int(11) DEFAULT NULL,
+    `EXCEPTION_STACK_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '异常信息栈ID',
+    `EXCEPTION_MSG_` varchar(4000) COLLATE utf8_bin DEFAULT NULL COMMENT '异常信息',
+    `DUEDATE_` timestamp(3) NULL DEFAULT NULL COMMENT '到期时间',
+    `REPEAT_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '重复',
+    `HANDLER_TYPE_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '处理类型',
+    `HANDLER_CFG_` varchar(4000) COLLATE utf8_bin DEFAULT NULL COMMENT '处理标识',
+    `TENANT_ID_` varchar(255) COLLATE utf8_bin DEFAULT '',
+    PRIMARY KEY (`ID_`),
+    KEY `ACT_FK_JOB_EXECUTION` (`EXECUTION_ID_`),
+    KEY `ACT_FK_JOB_PROCESS_INSTANCE` (`PROCESS_INSTANCE_ID_`),
+    KEY `ACT_FK_JOB_PROC_DEF` (`PROC_DEF_ID_`),
+    KEY `ACT_FK_JOB_EXCEPTION` (`EXCEPTION_STACK_ID_`),
+    CONSTRAINT `ACT_FK_JOB_EXCEPTION` FOREIGN KEY (`EXCEPTION_STACK_ID_`) REFERENCES `act_ge_bytearray` (`ID_`),
+    CONSTRAINT `ACT_FK_JOB_EXECUTION` FOREIGN KEY (`EXECUTION_ID_`) REFERENCES `act_ru_execution` (`ID_`),
+    CONSTRAINT `ACT_FK_JOB_PROCESS_INSTANCE` FOREIGN KEY (`PROCESS_INSTANCE_ID_`) REFERENCES `act_ru_execution` (`ID_`),
+    CONSTRAINT `ACT_FK_JOB_PROC_DEF` FOREIGN KEY (`PROC_DEF_ID_`) REFERENCES `act_re_procdef` (`ID_`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT '运行时定时任务表';
+
+CREATE TABLE `ACT_RU_TASK` (
+    `ID_` varchar(64) COLLATE utf8_bin NOT NULL,
+    `REV_` int(11) DEFAULT NULL,
+    `EXECUTION_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '执行实例ID',
+    `PROC_INST_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '流程实例ID',
+    `PROC_DEF_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '流程定义ID',
+    `NAME_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '名称',
+    `PARENT_TASK_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '父级任务ID',
+    `DESCRIPTION_` varchar(4000) COLLATE utf8_bin DEFAULT NULL COMMENT '任务描述',
+    `TASK_DEF_KEY_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '任务定义KEY',
+    `OWNER_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '任务所属人',
+    `ASSIGNEE_` varchar(255) COLLATE utf8_bin DEFAULT NULL COMMENT '代理人',
+    `DELEGATION_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '代理团',
+    `PRIORITY_` int(11) DEFAULT NULL COMMENT '优先级',
+    `CREATE_TIME_` timestamp(3) NULL DEFAULT NULL COMMENT '创建时间',
+    `DUE_DATE_` datetime(3) DEFAULT NULL COMMENT '执行时间',
+    `CATEGORY_` varchar(255) COLLATE utf8_bin DEFAULT NULL,
+    `SUSPENSION_STATE_` int(11) DEFAULT NULL COMMENT '暂停状态',
+    `TENANT_ID_` varchar(255) COLLATE utf8_bin DEFAULT '',
+    `FORM_KEY_` varchar(255) COLLATE utf8_bin DEFAULT NULL,
+    `CLAIM_TIME_` datetime(3) DEFAULT NULL,
+    PRIMARY KEY (`ID_`),
+    KEY `ACT_IDX_TASK_CREATE` (`CREATE_TIME_`),
+    KEY `ACT_FK_TASK_EXE` (`EXECUTION_ID_`),
+    KEY `ACT_FK_TASK_PROCINST` (`PROC_INST_ID_`),
+    KEY `ACT_FK_TASK_PROCDEF` (`PROC_DEF_ID_`),
+    CONSTRAINT `ACT_FK_TASK_EXE` FOREIGN KEY (`EXECUTION_ID_`) REFERENCES `act_ru_execution` (`ID_`),
+    CONSTRAINT `ACT_FK_TASK_PROCDEF` FOREIGN KEY (`PROC_DEF_ID_`) REFERENCES `act_re_procdef` (`ID_`),
+    CONSTRAINT `ACT_FK_TASK_PROCINST` FOREIGN KEY (`PROC_INST_ID_`) REFERENCES `act_ru_execution` (`ID_`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT '运行时任务表';
+
+CREATE TABLE `ACT_RU_VARIABLE` (
+    `ID_` varchar(64) COLLATE utf8_bin NOT NULL,
+    `REV_` int(11) DEFAULT NULL,
+    `TYPE_` varchar(255) COLLATE utf8_bin NOT NULL COMMENT '类型',
+    `NAME_` varchar(255) COLLATE utf8_bin NOT NULL COMMENT '名称',
+    `EXECUTION_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '执行实例ID',
+    `PROC_INST_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '流程实例ID',
+    `TASK_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '任务ID',
+    `BYTEARRAY_ID_` varchar(64) COLLATE utf8_bin DEFAULT NULL COMMENT '字节数组ID',
+    `DOUBLE_` double DEFAULT NULL COMMENT '存储double值',
+    `LONG_` bigint(20) DEFAULT NULL COMMENT '存储long值',
+    `TEXT_` varchar(4000) COLLATE utf8_bin DEFAULT NULL COMMENT '存储string值',
+    `TEXT2_` varchar(4000) COLLATE utf8_bin DEFAULT NULL COMMENT '存储JPA持久化对象时，才有值，该值为对象ID',
+    PRIMARY KEY (`ID_`),
+    KEY `ACT_IDX_VARIABLE_TASK_ID` (`TASK_ID_`),
+    KEY `ACT_FK_VAR_EXE` (`EXECUTION_ID_`),
+    KEY `ACT_FK_VAR_PROCINST` (`PROC_INST_ID_`),
+    KEY `ACT_FK_VAR_BYTEARRAY` (`BYTEARRAY_ID_`),
+    CONSTRAINT `ACT_FK_VAR_BYTEARRAY` FOREIGN KEY (`BYTEARRAY_ID_`) REFERENCES `act_ge_bytearray` (`ID_`),
+    CONSTRAINT `ACT_FK_VAR_EXE` FOREIGN KEY (`EXECUTION_ID_`) REFERENCES `act_ru_execution` (`ID_`),
+    CONSTRAINT `ACT_FK_VAR_PROCINST` FOREIGN KEY (`PROC_INST_ID_`) REFERENCES `act_ru_execution` (`ID_`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_bin COMMENT '运行时流程变量数据表';
+

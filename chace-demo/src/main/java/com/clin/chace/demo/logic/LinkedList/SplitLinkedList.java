@@ -13,24 +13,24 @@ public class SplitLinkedList {
 
     public static ListNode solution(ListNode head, int x) {
         ListNode curNode = head;
-        ListNode smallNode = new ListNode();
-        ListNode greaterNode = new ListNode();
+        ListNode smallNode = new ListNode(0);
+        ListNode greaterNode = new ListNode(0);
         ListNode newHead = smallNode;
         ListNode greaterHead = greaterNode;
 
         while (curNode != null) {
-            if (curNode.getValue() < x) {
-                smallNode.setNextNode(curNode);
-                smallNode = smallNode.getNextNode();
+            if (curNode.val < x) {
+                smallNode.next = curNode;
+                smallNode = smallNode.next;
             } else {
-                greaterNode.setNextNode(curNode);
-                greaterNode = greaterNode.getNextNode();
+                greaterNode.next = curNode;
+                greaterNode = greaterNode.next;
             }
-            curNode = curNode.getNextNode();
+            curNode = curNode.next;
         }
-        greaterNode.setNextNode(null);
-        smallNode.setNextNode(greaterHead.getNextNode());
-        return newHead.getNextNode();
+        greaterNode.next = null;
+        smallNode.next = greaterHead.next;
+        return newHead.next;
     }
 
     public static void main(String[] args) {
@@ -41,18 +41,18 @@ public class SplitLinkedList {
         ListNode node4 = new ListNode(5);
         ListNode node5 = new ListNode(2);
 
-        head.setNextNode(node1);
-        node1.setNextNode(node2);
-        node2.setNextNode(node3);
-        node3.setNextNode(node4);
-        node4.setNextNode(node5);
+        head.next = node1;
+        node1.next = node2;
+        node2.next = node3;
+        node3.next = node4;
+        node4.next = node5;
 
         ListNode newHead = SplitLinkedList.solution(head, 3);
 
         ListNode curNode = newHead;
         while (curNode != null) {
-            System.out.println(curNode.getValue());
-            ListNode nextNode = curNode.getNextNode();
+            System.out.println(curNode.val);
+            ListNode nextNode = curNode.next;
             curNode = nextNode;
         }
     }

@@ -1,0 +1,45 @@
+server:
+  port: 8089
+spring:
+  application:
+    name: mybatis-demo
+    jackson:
+      serialization.write_dates_as_timestamps: false
+      date-format: yyyy-MM-dd HH:mm:ss
+      time-zone: Asia/Shanghai
+    main:
+      allow-bean-definition-overriding: true
+
+  datasource:
+    druid:
+      url: jdbc:mysql://localhost:3306/test?useUnicode=true&characterEncoding=utf-8&autoReconnect=true&useSSL=false&zeroDateTimeBehavior=convertToNull   #如果使用router，请写router的url即可。
+      username: root
+      password: 123456
+      minIdle: 1
+      max-active: 32   # <建议与Application并发级别保持一致>
+      max-wait: 3000
+      initial-size: 16
+      name: dataSource
+      remove-abandoned: true
+      remove-abandoned-timeout: 60
+      validation-query: SELECT 1
+      test-while-idle: true
+      time-between-eviction-runs-millis: 30000
+      min-evictable-idle-time-millis: 300000
+      test-on-borrow: true
+      test-on-return: true
+      filter:
+        stat:
+          enabled: true
+          log-slow-sql: true
+          slow-sql-millis: 2000
+          merge-sql: true
+
+  mybatis:
+    configuration:
+      map-underscore-to-camel-case: true
+    mapper-locations: classpath*:mapper/*.xml
+    type-aliases-package: com.clin.mybatis.demo.entity
+    config-location: classpath*:config/mybatis-config.xml
+
+

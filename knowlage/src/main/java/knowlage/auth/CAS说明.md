@@ -5,7 +5,7 @@
 CAS Central Authentication Service的缩写，中央认证服务
 
 ### CAS登录过程
-![alt text](../../../resources/img/CAS登录过程.png)  
+![CAS登录过程图](../../../resources/img/auth/CAS登录过程.png)  
 > 注意：图中的应用服务就是CAS Client；CAS服务器是CAS Server  
 
 从结构上看，CAS包括两部分：CAS Server和CAS Client。CAS Server需要独立部署，主要负责对用户的认证工作，

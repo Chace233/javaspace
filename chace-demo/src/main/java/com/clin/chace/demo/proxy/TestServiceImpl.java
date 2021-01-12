@@ -4,6 +4,10 @@ public class TestServiceImpl implements TestService {
 
     private String name;
 
+    public TestServiceImpl() {
+
+    }
+
     public TestServiceImpl(String name) {
         this.name = name;
     }

@@ -23,20 +23,4 @@ public class DynamicProxy implements InvocationHandler {
     public Object getProxy(ClassLoader cl, Class clazz) {
         return Proxy.newProxyInstance(cl, new Class[]{clazz}, this);
     }
-
-    public static void main(String[] args) {
-        TestService ts = new TestServiceImpl("chace");
-
-        if (ts instanceof TestService) {
-            System.out.println("创建了一个TestService");
-        }
-
-        TestService proxy = (TestService) new DynamicProxy(ts).getProxy(TestService.class.getClassLoader(), TestService.class);
-
-        proxy.say();
-
-        if (proxy instanceof TestService) {
-            System.out.println("创建的代理也是TestService");
-        }
-    }
 }

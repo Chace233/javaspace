@@ -9,4 +9,4 @@
 3. 通过实现`ImportBeanDefinitionRegistar`接口，并且实现registerBeanDefinitions方法，手动注册Bean  
 
 ### Bean的创建过程
-
+![SpringBean加载流程](../../../resources/img/spring/SprinbBean加载流程.png)
